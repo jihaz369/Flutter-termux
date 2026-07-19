@@ -1,0 +1,84 @@
+name: Replace Repository From ZIP
+
+on:
+  workflow_dispatch:
+
+  push:
+    paths:
+      - "*.zip"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Replace repository with ZIP contents
+        shell: bash
+        run: |
+          set -e
+
+          ZIP=$(find . -maxdepth 1 -name "*.zip" | head -n1)
+
+          if [ -z "$ZIP" ]; then
+            echo "No ZIP file found."
+            exit 1
+          fi
+
+          echo "Using ZIP: $ZIP"
+
+          # Delete repository contents except .git, .github and ZIP
+          find . -mindepth 1 \
+            ! -path "./.git*" \
+            ! -path "./.github*" \
+            ! -name "$(basename "$ZIP")" \
+            -exec rm -rf {} +
+
+          mkdir temp_extract
+
+          unzip -oq "$ZIP" -d temp_extract
+
+          # Detect if ZIP has a single top-level directory
+          COUNT=$(find temp_extract -mindepth 1 -maxdepth 1 | wc -l)
+
+          if [ "$COUNT" -eq 1 ] && [ -d "$(find temp_extract -mindepth 1 -maxdepth 1)" ]; then
+              ROOT=$(find temp_extract -mindepth 1 -maxdepth 1)
+              shopt -s dotglob
+              mv "$ROOT"/* .
+          else
+              shopt -s dotglob
+              mv temp_extract/* .
+          fi
+
+          rm -rf temp_extract
+          rm -f "$ZIP"
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+
+          git commit -m "Deploy repository from ZIP"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
