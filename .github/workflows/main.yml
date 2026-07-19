@@ -37,7 +37,7 @@ jobs:
 
           echo "Using ZIP: $ZIP"
 
-          # Delete repository contents except .git, .github and ZIP
+          # Remove everything except .git, .github and the ZIP
           find . -mindepth 1 \
             ! -path "./.git*" \
             ! -path "./.github*" \
@@ -48,16 +48,15 @@ jobs:
 
           unzip -oq "$ZIP" -d temp_extract
 
-          # Detect if ZIP has a single top-level directory
-          COUNT=$(find temp_extract -mindepth 1 -maxdepth 1 | wc -l)
+          # If ZIP contains one top-level folder, move its contents
+          ITEMS=$(find temp_extract -mindepth 1 -maxdepth 1)
 
-          if [ "$COUNT" -eq 1 ] && [ -d "$(find temp_extract -mindepth 1 -maxdepth 1)" ]; then
-              ROOT=$(find temp_extract -mindepth 1 -maxdepth 1)
-              shopt -s dotglob
-              mv "$ROOT"/* .
+          if [ "$(echo "$ITEMS" | wc -l)" -eq 1 ] && [ -d "$ITEMS" ]; then
+            shopt -s dotglob
+            mv "$ITEMS"/* .
           else
-              shopt -s dotglob
-              mv temp_extract/* .
+            shopt -s dotglob
+            mv temp_extract/* .
           fi
 
           rm -rf temp_extract
@@ -71,14 +70,12 @@ jobs:
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No changes."
+            echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Deploy repository from ZIP"
+          git commit -m "Deploy project from ZIP"
 
       - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref_name }}
+        run: |
+          git push origin HEAD:${{ github.ref_name }}
