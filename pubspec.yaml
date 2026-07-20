@@ -1,0 +1,52 @@
+name: holoradio
+description: >-
+  HoloRadio — a cyberpunk audio data modem. Encode text into sound
+  (FSK / AFSK / BPSK / QPSK / MSK), transmit it, and decode it back
+  with AES-256-GCM encryption, Reed-Solomon FEC and CRC-16 framing.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.2
+
+  # UI
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
+  dynamic_color: ^1.7.0
+
+  # Files & storage
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
+  permission_handler: ^11.3.1
+
+  # Audio
+  record: ^5.1.1
+  audioplayers: ^6.0.0
+  just_audio: ^0.9.42
+
+  # Crypto / data
+  crypto: ^3.0.5
+  encrypt: ^5.0.3
+  pointycastle: ^3.9.1
+  archive: ^3.6.1
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/fonts/
