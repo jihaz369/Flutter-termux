@@ -1,10 +1,11 @@
 name: Universal ZIP Decompress
 
 on:
+  workflow_dispatch:
+
   push:
     paths:
-      - "**.zip"
-  workflow_dispatch:
+      - "*.zip"
 
 permissions:
   contents: write
@@ -22,47 +23,70 @@ jobs:
       - name: Install unzip
         run: sudo apt-get update && sudo apt-get install -y unzip
 
-      - name: Find ZIP file
-        id: zip
+      - name: Find and backup ZIP
+        shell: bash
         run: |
-          ZIPFILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          set -e
+
+          ZIPFILE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -n 1)
 
           if [ -z "$ZIPFILE" ]; then
             echo "No ZIP file found."
             exit 1
           fi
 
-          echo "ZIPFILE=$ZIPFILE" >> $GITHUB_ENV
-          echo "Using $ZIPFILE"
+          echo "ZIP found: $ZIPFILE"
 
-      - name: Clean repository except .git and .github
+          cp "$ZIPFILE" /tmp/project.zip
+
+          if [ ! -f /tmp/project.zip ]; then
+            echo "Backup failed."
+            exit 1
+          fi
+
+          echo "ZIPFILE=/tmp/project.zip" >> "$GITHUB_ENV"
+
+      - name: Clean repository
+        shell: bash
         run: |
+          set -e
+
           find . -mindepth 1 \
             ! -path "./.git*" \
             ! -path "./.github*" \
             -exec rm -rf {} +
 
       - name: Extract ZIP into repository root
+        shell: bash
         run: |
-          unzip -o "$ZIPFILE" -d .
+          set -e
+          unzip -oq "$ZIPFILE" -d .
 
-      - name: Flatten if ZIP contains one top folder
+      - name: Flatten top folder
+        shell: bash
         run: |
-          COUNT=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".github" | wc -l)
+          set -e
+          shopt -s dotglob nullglob
+
+          DIRS=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".github" | wc -l)
           FILES=$(find . -mindepth 1 -maxdepth 1 -type f | wc -l)
 
-          if [ "$COUNT" -eq 1 ] && [ "$FILES" -eq 0 ]; then
+          if [ "$DIRS" -eq 1 ] && [ "$FILES" -eq 0 ]; then
             DIR=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".github")
-            shopt -s dotglob
+
+            echo "Flattening $DIR"
+
             mv "$DIR"/* .
             rmdir "$DIR"
           fi
 
-      - name: Remove ZIP
+      - name: Remove ZIP files
+        shell: bash
         run: |
           rm -f *.zip
 
-      - name: Commit and Push
+      - name: Commit changes
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
